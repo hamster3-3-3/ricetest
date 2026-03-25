@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <!-- Encoding: keep UTF-8 to safely render Chinese and avoid unexpected token issues -->
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>炊飯向上(週會)品評</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f3f4f6; }
+        .score-card { transition: all 0.2s; cursor: pointer; border: 2px solid transparent; }
+        .score-card.active { border-color: #1f2937; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .score-card:hover { transform: translateY(-1px); background-color: #ffffff; }
+        .tab-btn { transition: all 0.3s; }
+        .tab-btn.active { background-color: #1f2937; color: white; border-color: #1f2937; }
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b-2 border-gray-800 pb-6">
+            <div class="text-center md:text-left">
+                <h1 class="text-3xl font-black text-gray-900 tracking-tight">炊飯向上(週會)品評</h1>
+            </div>
+            <div class="mt-4 md:mt-0 flex flex-wrap justify-center gap-3">
+                <button onclick="exportCSV()" class="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-800 transition shadow-lg flex items-center gap-2">
+                    提交表單
+                </button>
+                <button onclick="resetAll()" class="bg-white text-red-500 px-4 py-3 rounded-xl font-bold border border-red-200 hover:bg-red-50 transition text-sm">
+                    全數重置
+                </button>
+            </div>
+        </div>
+
+        <!-- 評測者資訊 -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row gap-4 items-center">
+            <div class="w-full md:w-1/3">
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">
+                    評測者 Assessor（必填）
+                </label>
+                <input
+                    type="text"
+                    id="globalAssessor"
+                    required
+                    class="w-full bg-gray-50 border-none rounded-xl p-3 focus:ring-2 focus:ring-gray-400 outline-none font-bold"
+                    placeholder="輸入評測人員姓名"
+                    aria-required="true"
+                >
+                <p id="assessorError" class="mt-2 text-xs text-red-500 hidden">請先填寫評測者姓名（必填）。</p>
+            </div>
+            <p class="text-gray-400 text-sm hidden md:block">切換 A/B 樣品時系統會自動保留您的選擇與筆記。</p>
+        </div>
+
+        <!-- 品項切換區 -->
+        <div id="tabContainer"></div>
+
+        <!-- Form Container -->
+        <div id="formContainer">
+            <!-- 預設靜態內容（JS 可用時會被 renderCurrentForm() 覆蓋成互動版） -->
+            <div class="sample-form space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
+                    <div class="flex-1">
+                        <label class="text-xs font-bold text-gray-400 uppercase block mb-1">樣品類別</label>
+                        <div class="text-2xl font-black text-gray-900 p-1">新低溫飯</div>
+                    </div>
+                    <div class="w-full md:w-64">
+                        <label class="text-xs font-bold text-gray-400 uppercase block mb-1">廠別</label>
+                        <div class="relative">
+                            <select class="w-full bg-gray-100 border-2 border-transparent focus:border-gray-900 rounded-xl p-3 font-mono font-bold text-gray-900 outline-none cursor-pointer" disabled>
+                                <option selected>大溪廠</option>
+                                <option>晉欣廠</option>
+                                <option>新豐廠</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">▼</div>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-400">（若預覽環境禁用 JS，互動功能將無法使用，但版面仍可預覽）</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 測試結果（開發用，可留著） -->
+        <div id="debug" class="mt-6 text-xs text-gray-500"></div>
+    </div>
+
+    
+    <script>
+        /**
+         * 按下「提交表單」時：
+         *  - 透過 Google Apps Script Web App 上傳到 Google Drive
+         */
+        const DRIVE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbw-RUOruPvni0M37kDhtulr99Q4YwD-Sm9Jp9vNZfrHtfedQL2puekcX9bDSOpU9TWH/exec";
+        const UPLOAD_TOKEN = "rice_test_2025";
+
+        const sampleOptions = {
+            "大溪": "大溪",
+            "晉欣": "晉欣",
+            "大溪廠": "大溪廠",
+            "晉欣廠": "晉欣廠",
+            "新豐廠": "新豐廠"
+        };
+
+        const categoryFactories = {
+            "新低溫飯": ["大溪廠", "晉欣廠", "新豐廠"],
+            "11+16湖鹽飯": ["大溪廠", "晉欣廠"],
+            "11+16肉鬆湖鹽飯": ["大溪廠", "晉欣廠"],
+            "一見鍾情飯": ["大溪廠", "晉欣廠"],
+            "肉鬆飯糰": ["大溪", "晉欣"],
+            "鮪魚飯糰": ["大溪", "晉欣"],
+            "熟成紅鮭飯糰": ["大溪", "晉欣"]
+        };
+
+        const categories = [
+            "肉鬆飯糰",
+            "鮪魚飯糰",
+            "熟成紅鮭飯糰",
+            "新低溫飯",
+            "11+16湖鹽飯",
+            "11+16肉鬆湖鹽飯",
+            "一見鍾情飯"
+        ];
+
+        const criteria = [
+            {
+                key: "color",
+                titleZh: "一、顏色(外觀)",
+                titleEn: "Color / Appearance",
+                gridClass: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3",
+                options: [
+                    { val: 1, score: 100, text: "1. 良好(米飯有光澤)" },
+                    { val: 2, score: 70, text: "2. 普通(無意見)" },
+                    { val: 3, score: 50, text: "3. 不良(顏色黯淡)" }
+                ]
+            },
+            {
+                key: "aroma",
+                titleZh: "二、香氣(飯香)",
+                titleEn: "Aroma",
+                gridClass: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3",
+                options: [
+                    { val: 1, score: 100, text: "1. 濃(米飯特有香氣)" },
+                    { val: 2, score: 70, text: "2. 普通(無意見)" },
+                    { val: 3, score: 50, text: "3. 淡(米糠臭味或添加物酸味)" }
+                ]
+            },
+            {
+                key: "grain",
+                titleZh: "三、粒感",
+                titleEn: "Grain Sensation",
+                gridClass: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3",
+                options: [
+                    { val: 1, score: 100, text: "1. 良好(口中可以明確感受1粒1粒)" },
+                    { val: 2, score: 70, text: "2. 普通(無意見)" },
+                    { val: 3, score: 50, text: "3. 不良(米粒破碎，整體黏糊)" }
+                ]
+            },
+            {
+                key: "firmness",
+                titleZh: "四、軟硬度",
+                titleEn: "Firmness",
+                gridClass: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3",
+                options: [
+                    { val: 1, score: 70, text: "1. 硬(口感偏硬)" },
+                    { val: 2, score: 100, text: "2. 適中(軟硬適中)" },
+                    { val: 3, score: 70, text: "3. 軟(口感偏軟)" }
+                ]
+            },
+            {
+                key: "taste",
+                titleZh: "五、味道",
+                titleEn: "Taste",
+                gridClass: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3",
+                options: [
+                    { val: 1, score: 100, text: "1. 良好(能感受到米飯甜味)" },
+                    { val: 2, score: 70, text: "2. 普通(無意見)" },
+                    { val: 3, score: 50, text: "3. 不良(米飯本身有酸臭味)" }
+                ]
+            },
+            {
+                key: "viscosity",
+                titleZh: "六、黏度",
+                titleEn: "Viscosity",
+                gridClass: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3",
+                options: [
+                    { val: 1, score: 100, text: "1. 良好(黏度剛剛好)" },
+                    { val: 2, score: 70, text: "2. 普通(無意見)" },
+                    { val: 3, score: 50, text: "3. 不良(過於乾硬或黏糊)" }
+                ]
+            }
+        ];
+
+        let dataStore = {};
+        let currentCategoryIdx = 0;
+
+        function blankSampleState() {
+            const scores = {};
+            const valIdx = {};
+            criteria.forEach(item => {
+                scores[item.key] = 0;
+                valIdx[item.key] = null;
+            });
+            return { scores, evaluation: { color: '', aroma: '', grain: '', firmness: '', taste: '', viscosity: '' }, valIdx };
+        }
+
+        function initDataStore() {
+            dataStore = {};
+            categories.forEach(cat => {
+                const allowedFactories = categoryFactories[cat] || Object.keys(sampleOptions);
+                dataStore[cat] = {
+                    currentSelection: allowedFactories[0]
+                };
+                allowedFactories.forEach(factory => {
+                    dataStore[cat][factory] = blankSampleState();
+                });
+            });
+        }
+
+        function init() {
+            try {
+                initDataStore();
+                renderTabs();
+                renderCurrentForm();
+                runTests();
+
+                const assessorEl = document.getElementById('globalAssessor');
+                if (assessorEl) {
+                    assessorEl.addEventListener('input', () => {
+                        const err = document.getElementById('assessorError');
+                        if (err) err.classList.add('hidden');
+                    });
+                }
+            } catch (e) {
+                const el = document.getElementById('debug');
+                if (el) el.textContent = 'Init error: ' + (e?.message || e);
+                console.error(e);
+            }
+        }
+
+        function renderTabs() {
+            const container = document.getElementById('tabContainer');
+            if (!container) return;
+
+            container.className = "grid grid-cols-2 md:grid-cols-3 gap-3 mb-6";
+            container.innerHTML = categories.map((cat, idx) => `
+                <button
+                    onclick="switchCategory(${idx})"
+                    class="tab-btn bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm md:text-base font-bold shadow-sm hover:bg-gray-50 ${idx === currentCategoryIdx ? 'active' : ''}">
+                    ${cat}
+                </button>
+            `).join('');
+        }
+
+        function switchCategory(idx) {
+            currentCategoryIdx = idx;
+            renderTabs();
+            renderCurrentForm();
+        }
+
+        function toggleSampleVersion(catName, version) {
+            dataStore[catName].currentSelection = version;
+            renderCurrentForm();
+        }
+
+        
+        function renderCurrentForm() {
+            const catName = categories[currentCategoryIdx];
+            const currentVersion = dataStore[catName].currentSelection;
+            const currentData = dataStore[catName][currentVersion];
+            const container = document.getElementById('formContainer');
+
+            const criteriaHtml = criteria.map((item, idx) => `
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 bg-gray-900 text-white rounded flex items-center justify-center text-xs">${idx + 1}</span>
+                        ${item.titleZh} <span class="text-sm text-gray-400 font-semibold">${item.titleEn}</span>
+                    </h2>
+                    <div class="${item.gridClass}">
+                        ${item.options.map(opt => renderScoreCard(
+                            catName,
+                            item.key,
+                            opt.val,
+                            opt.score,
+                            opt.text,
+                            currentData.valIdx[item.key] === opt.val
+                        )).join('')}
+                    </div>
+                    <div class="mt-3">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">說明</label>
+                        <input
+                            type="text"
+                            value="${(currentData.evaluation && currentData.evaluation[item.key]) || ''}"
+                            oninput="updateItemNote('${item.key}', this.value)"
+                            class="w-full bg-gray-50 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-gray-400 outline-none"
+                            placeholder="請輸入說明"
+                        >
+                    </div>
+                </div>
+            `).join('');
+
+            const totalRaw = Object.values(currentData.scores).reduce((a, b) => a + b, 0);
+            const totalPercent = Math.round((totalRaw / 600) * 1000) / 10;
+
+            container.innerHTML = `
+                <div class="sample-form space-y-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
+                        <div class="flex-1">
+                            <label class="text-xs font-bold text-gray-400 uppercase block mb-1">品項</label>
+                            <div class="text-2xl font-black text-gray-900 p-1">${catName}</div>
+                        </div>
+                        <div class="w-full md:w-72">
+                            <label class="text-xs font-bold text-gray-400 uppercase block mb-1">廠別</label>
+                            <div class="relative">
+                                <select onchange="toggleSampleVersion('${catName}', this.value)"
+                                        class="w-full bg-gray-100 border-2 border-transparent focus:border-gray-900 rounded-xl p-3 font-bold text-gray-900 outline-none cursor-pointer">
+                                    ${(categoryFactories[catName] || Object.keys(sampleOptions)).map((key) => `
+                                        <option value="${key}" ${currentVersion === key ? 'selected' : ''}>${sampleOptions[key]}</option>
+                                    `).join('')}
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">▼</div>
+                            </div>
+                        </div>
+                    </div>
+
+${criteriaHtml}
+                </div>
+            `;
+        }
+
+
+        function renderScoreCard(catName, category, val, score, text, isActive) {
+            const activeClass = isActive ? 'active' : '';
+            const fontClass = isActive ? 'font-bold text-gray-900' : 'text-gray-700 font-medium';
+            return `
+                <div onclick="updateScore('${catName}', '${category}', ${val}, ${score})"
+                     class="score-card p-4 rounded-xl bg-gray-50 flex justify-between items-center ${activeClass}">
+                    <span class="${fontClass}">${text}</span>
+                </div>
+            `;
+        }
+
+        function updateScore(catName, scoreCat, val, weightedScore) {
+            const version = dataStore[catName].currentSelection;
+            dataStore[catName][version].valIdx[scoreCat] = val;
+            dataStore[catName][version].scores[scoreCat] = weightedScore;
+            renderCurrentForm();
+        }
+
+
+
+        function updateItemNote(itemKey, value) {
+            const catName = categories[currentCategoryIdx];
+            const version = dataStore[catName].currentSelection;
+            if (!dataStore[catName][version].evaluation || typeof dataStore[catName][version].evaluation !== 'object') {
+                dataStore[catName][version].evaluation = { color: '', aroma: '', grain: '', firmness: '', taste: '', viscosity: '' };
+            }
+            dataStore[catName][version].evaluation[itemKey] = value;
+        }
+
+
+        function resetAll() {
+            if(!confirm('這將清除所有已選數據，確定嗎？')) return;
+            initDataStore();
+            currentCategoryIdx = 0;
+            renderTabs();
+            renderCurrentForm();
+
+            const assessorEl = document.getElementById('globalAssessor');
+            if (assessorEl) assessorEl.value = '';
+            const err = document.getElementById('assessorError');
+            if (err) err.classList.add('hidden');
+        }
+
+        function clearAllAfterSubmit() {
+            const assessorEl = document.getElementById('globalAssessor');
+            if (assessorEl) assessorEl.value = '';
+
+            initDataStore();
+            currentCategoryIdx = 0;
+            renderTabs();
+            renderCurrentForm();
+
+            const err = document.getElementById('assessorError');
+            if (err) err.classList.add('hidden');
+            if (assessorEl) assessorEl.focus();
+        }
+
+        function normalizeCsvCell(text) {
+            return String(text)
+                .replace(/\r\n|\n|\r/g, ' ')
+                .replace(/,/g, '，');
+        }
+
+        function validateAssessorOrBlock() {
+            const assessorEl = document.getElementById('globalAssessor');
+            const err = document.getElementById('assessorError');
+            const val = (assessorEl?.value || '').trim();
+
+            if (!val) {
+                if (err) err.classList.remove('hidden');
+                assessorEl?.focus();
+                alert('請先填寫評測者姓名（必填）');
+                return null;
+            }
+            if (err) err.classList.add('hidden');
+            return val;
+        }
+
+
+        function getOptionLabelWithScore(itemKey, val, score) {
+            const criterion = criteria.find(c => c.key === itemKey);
+            if (!criterion) return String(score ?? '');
+            const option = criterion.options.find(opt => String(opt.val) === String(val));
+            if (!option) return String(score ?? '');
+            let label = option.text || '';
+            label = label.replace(/^\d+\.\s*/, '');
+            label = label.replace(/\([^()]*\)/g, '').trim();
+            return `${label}(${option.score})`;
+        }
+
+        
+        function exportCSV() {
+            const assessor = validateAssessorOrBlock();
+            if (!assessor) return;
+
+            const headers = ['品項', '評測者', '廠別', '顏色(外觀)得分', '顏色(外觀)說明', '香氣(飯香)得分', '香氣(飯香)說明', '粒感得分', '粒感說明', '軟硬度得分', '軟硬度說明', '味道得分', '味道說明', '黏度得分', '黏度說明', '總分(百分制)'];
+
+            const rows = [];
+            categories.forEach(cat => {
+                (categoryFactories[cat] || Object.keys(sampleOptions)).forEach(ver => {
+                    const d = dataStore[cat][ver];
+                    const total = Number(d.scores.color || 0) + Number(d.scores.aroma || 0) + Number(d.scores.grain || 0) + Number(d.scores.firmness || 0) + Number(d.scores.taste || 0) + Number(d.scores.viscosity || 0);
+                    const totalPercent = Math.round((total / 600) * 1000) / 10;
+                    rows.push([
+                        cat,
+                        assessor,
+                        ver,
+                        getOptionLabelWithScore('color', d.valIdx?.color, d.scores.color), d.evaluation?.color || '',
+                        getOptionLabelWithScore('aroma', d.valIdx?.aroma, d.scores.aroma), d.evaluation?.aroma || '',
+                        getOptionLabelWithScore('grain', d.valIdx?.grain, d.scores.grain), d.evaluation?.grain || '',
+                        getOptionLabelWithScore('firmness', d.valIdx?.firmness, d.scores.firmness), d.evaluation?.firmness || '',
+                        getOptionLabelWithScore('taste', d.valIdx?.taste, d.scores.taste), d.evaluation?.taste || '',
+                        getOptionLabelWithScore('viscosity', d.valIdx?.viscosity, d.scores.viscosity), d.evaluation?.viscosity || '',
+                        totalPercent
+                    ]);
+                });
+            });
+
+            const BOM = "\uFEFF";
+            const csvBody = [headers, ...rows]
+                .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+                .join('\n');
+            const csvContent = BOM + csvBody;
+
+            const filename = `炊飯向上(週會)品評_${new Date().toISOString().slice(0,10)}.csv`;
+            uploadCSVToDrive({ csvContent, filename, assessor });
+        }
+
+
+        async function uploadCSVToDrive({ csvContent, filename, assessor }) {
+            if (!DRIVE_WEBAPP_URL) {
+                alert('尚未設定 DRIVE_WEBAPP_URL，因此無法上傳到雲端硬碟。');
+                return;
+            }
+
+            const payload = {
+                token: UPLOAD_TOKEN,
+                filename,
+                assessor,
+                csv: csvContent
+            };
+
+            const formBody = new URLSearchParams({ payload: JSON.stringify(payload) });
+
+            try {
+                const res = await fetch(DRIVE_WEBAPP_URL, {
+                    method: 'POST',
+                    body: formBody
+                });
+
+                const raw = await res.text();
+                let out;
+                try { out = JSON.parse(raw); } catch { out = { ok: false, message: raw }; }
+
+                if (!res.ok || !out.ok) {
+                    throw new Error(out.message || 'Upload failed');
+                }
+
+                alert('提交成功');
+                clearAllAfterSubmit();
+            } catch (err) {
+                console.error(err);
+                alert('上傳失敗：' + (err?.message || err));
+            }
+        }
+
+        function runTests() {
+            const log = (msg) => {
+                const el = document.getElementById('debug');
+                if (el) el.textContent = msg;
+            };
+
+            try {
+                const normalized = normalizeCsvCell('a\n"b",c\r\nd');
+                console.assert(!/\n|\r/.test(normalized), 'normalizeCsvCell should remove newlines');
+                console.assert(normalized.includes('，'), 'normalizeCsvCell should replace commas with ，');
+
+                const doubled = String('x"y').replace(/"/g, '""');
+                console.assert(doubled === 'x""y', 'double quote escaping should work');
+
+                const totalMax = criteria.reduce((sum, item) => sum + Math.max(...item.options.map(opt => opt.score)), 0);
+                console.assert(totalMax === 600, 'Max total score should be 600');
+
+                log('Self-test: OK');
+            } catch (e) {
+                log('Self-test: FAILED - ' + (e?.message || e));
+            }
+        }
+
+        window.onload = init;
+    </script>
+
+</body>
+</html>
