@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>炊飯向上(週會)品評</title>
+    <title>炊飯週會品評</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
@@ -15,6 +15,9 @@
         .score-card:hover { transform: translateY(-1px); background-color: #ffffff; }
         .tab-btn { transition: all 0.3s; }
         .tab-btn.active { background-color: #1f2937; color: white; border-color: #1f2937; }
+        .tab-btn.special-tab { background-color: #fee2e2; color: #991b1b; border-color: #fecaca; }
+        .tab-btn.special-tab:hover { background-color: #fecaca; }
+        .tab-btn.special-tab.active { background-color: #dc2626; color: white; border-color: #dc2626; }
         select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
     </style>
 </head>
@@ -23,7 +26,7 @@
         <!-- Header -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b-2 border-gray-800 pb-6">
             <div class="text-center md:text-left">
-                <h1 class="text-3xl font-black text-gray-900 tracking-tight">炊飯向上(週會)品評</h1>
+                <h1 class="text-3xl font-black text-gray-900 tracking-tight">炊飯週會品評</h1>
             </div>
             <div class="mt-4 md:mt-0 flex flex-wrap justify-center gap-3">
                 <button onclick="exportCSV()" class="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-800 transition shadow-lg flex items-center gap-2">
@@ -51,7 +54,7 @@
                 >
                 <p id="assessorError" class="mt-2 text-xs text-red-500 hidden">請先填寫評測者姓名（必填）。</p>
             </div>
-            <p class="text-gray-400 text-sm hidden md:block">切換廠別時系統會自動保留您的評分與勾選項目。</p>
+            <p class="text-gray-400 text-sm hidden md:block">切換 A/B/C/D 樣品時系統會自動保留您的評分與勾選項目。</p>
         </div>
 
         <!-- 品項切換區 -->
@@ -64,15 +67,14 @@
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
                     <div class="flex-1">
                         <label class="text-xs font-bold text-gray-400 uppercase block mb-1">樣品類別</label>
-                        <div class="text-2xl font-black text-gray-900 p-1">肉鬆飯糰</div>
+                        <div class="text-2xl font-black text-gray-900 p-1">鮪魚飯糰</div>
                     </div>
                     <div class="w-full md:w-64">
-                        <label class="text-xs font-bold text-gray-400 uppercase block mb-1">廠別</label>
+                        <label class="text-xs font-bold text-gray-400 uppercase block mb-1">樣品編號</label>
                         <div class="relative">
                             <select class="w-full bg-gray-100 border-2 border-transparent focus:border-gray-900 rounded-xl p-3 font-mono font-bold text-gray-900 outline-none cursor-pointer" disabled>
-                                <option selected>大溪廠</option>
-                                <option>晉欣廠</option>
-                                <option>新豐廠</option>
+                                <option selected>加水量7400</option>
+                                <option>加水量7550</option>
                             </select>
                             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">▼</div>
                         </div>
@@ -92,30 +94,29 @@
          * 按下「提交表單」時：
          *  - 透過 Google Apps Script Web App 上傳到 Google Drive
          */
-        const DRIVE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbw-RUOruPvni0M37kDhtulr99Q4YwD-Sm9Jp9vNZfrHtfedQL2puekcX9bDSOpU9TWH/exec";
+        const DRIVE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyOagZ0NOt-AEe6-Y1QUS5Ls_vmpVUO4bshpuExitE9ib7Q2zIMLFa609A5C6e_RgAr3A/exec";
         const UPLOAD_TOKEN = "rice_test_2025";
 
         const sampleOptions = {
-            "大溪": "大溪",
-            "晉欣": "晉欣",
-            "大溪廠": "大溪廠",
-            "晉欣廠": "晉欣廠",
-            "新豐廠": "新豐廠"
-        };
-
-        const categoryFactories = {
-            "肉鬆飯糰": ["大溪", "晉欣"],
-            "鮪魚飯糰": ["大溪", "晉欣"],
-            "雞肉飯糰": ["大溪", "晉欣"],
-            "熟成紅鮭飯糰": ["大溪", "晉欣"]
+            "加水量7400": "加水量7400",
+            "加水量7550": "加水量7550",
+            "加水量7200": "加水量7200",
+            "加水量7350": "加水量7350"
         };
 
         const categories = [
-            "肉鬆飯糰",
             "鮪魚飯糰",
-            "雞肉飯糰",
             "熟成紅鮭飯糰"
         ];
+
+        const categorySamples = {
+            "鮪魚飯糰": ["加水量7400", "加水量7550"],
+            "熟成紅鮭飯糰": ["加水量7200", "加水量7350"]
+        };
+
+        function getSampleCodes(catName) {
+            return categorySamples[catName] || ["A", "B", "C", "D"];
+        }
 
         const criteria = [
             {
@@ -132,7 +133,7 @@
                     "有光澤", "無光澤", "白色", "黃色",
                     "米粒輪廓清晰", "米粒表面凹凸不平，看起來模糊",
                     "胚芽明顯", "背線明顯", "碎米明顯",
-                    "米飯被壓爛", "米粒大", "米粒小"
+                    "米飯沒壓爛", "米粒大", "米粒小"
                 ]
             },
             {
@@ -291,12 +292,12 @@
         function initDataStore() {
             dataStore = {};
             categories.forEach(cat => {
-                const allowedFactories = categoryFactories[cat] || Object.keys(sampleOptions);
+                const sampleCodes = getSampleCodes(cat);
                 dataStore[cat] = {
-                    currentSelection: allowedFactories[0]
+                    currentSelection: sampleCodes[0]
                 };
-                allowedFactories.forEach(factory => {
-                    dataStore[cat][factory] = blankSampleState();
+                sampleCodes.forEach(code => {
+                    dataStore[cat][code] = blankSampleState();
                 });
             });
         }
@@ -330,7 +331,7 @@
             container.innerHTML = categories.map((cat, idx) => `
                 <button
                     onclick="switchCategory(${idx})"
-                    class="tab-btn bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm md:text-base font-bold shadow-sm hover:bg-gray-50 ${idx === currentCategoryIdx ? 'active' : ''}">
+                    class="tab-btn bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm md:text-base font-bold shadow-sm ${idx === currentCategoryIdx ? 'active' : ''}">
                     ${cat}
                 </button>
             `).join('');
@@ -350,9 +351,11 @@
         
         function renderCurrentForm() {
             const catName = categories[currentCategoryIdx];
+            const container = document.getElementById('formContainer');
+
+
             const currentVersion = dataStore[catName].currentSelection;
             const currentData = dataStore[catName][currentVersion];
-            const container = document.getElementById('formContainer');
 
             const criteriaHtml = criteria.map((item, idx) => `
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -397,12 +400,12 @@
                             <div class="text-2xl font-black text-gray-900 p-1">${catName}</div>
                         </div>
                         <div class="w-full md:w-72">
-                            <label class="text-xs font-bold text-gray-400 uppercase block mb-1">廠別</label>
+                            <label class="text-xs font-bold text-gray-400 uppercase block mb-1">樣品編號</label>
                             <div class="relative">
                                 <select onchange="toggleSampleVersion('${catName}', this.value)"
                                         class="w-full bg-gray-100 border-2 border-transparent focus:border-gray-900 rounded-xl p-3 font-bold text-gray-900 outline-none cursor-pointer">
-                                    ${(categoryFactories[catName] || Object.keys(sampleOptions)).map((key) => `
-                                        <option value="${key}" ${currentVersion === key ? 'selected' : ''}>${sampleOptions[key]}</option>
+                                    ${getSampleCodes(catName).map(code => `
+                                        <option value="${code}" ${currentVersion === code ? 'selected' : ''}>${sampleOptions[code]}</option>
                                     `).join('')}
                                 </select>
                                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">▼</div>
@@ -439,6 +442,7 @@
             `;
         }
 
+
 function renderScoreCard(catName, category, val, score, text, isActive) {
             const activeClass = isActive ? 'active' : '';
             const fontClass = isActive ? 'font-bold text-gray-900' : 'text-gray-700 font-medium';
@@ -449,6 +453,7 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
                 </div>
             `;
         }
+
 
         function updateScore(catName, scoreCat, val, weightedScore) {
             const version = dataStore[catName].currentSelection;
@@ -546,6 +551,12 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
 
 
 
+        function csvToBase64(str) {
+            return btoa(unescape(encodeURIComponent(str)));
+        }
+
+
+
         function getOverallEvaluationLabel(value) {
             const overallMap = { A: 'A(100)', B: 'B(70)', C: 'C(50)' };
             return overallMap[value] || '';
@@ -568,7 +579,7 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
             if (!assessor) return;
 
             const headers = [
-                '品項', '評測者', '廠別',
+                '品項', '評測者', '樣品代號',
                 '顏色(外觀)得分', '顏色(外觀)感受到項目', '顏色(外觀)說明',
                 '香氣(飯香)得分', '香氣(飯香)感受到項目', '香氣(飯香)說明',
                 '粒感得分', '粒感感受到項目', '粒感說明',
@@ -580,7 +591,7 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
 
             const rows = [];
             categories.forEach(cat => {
-                (categoryFactories[cat] || Object.keys(sampleOptions)).forEach(ver => {
+                getSampleCodes(cat).forEach(ver => {
                     const d = dataStore[cat][ver] || {};
                     rows.push([
                         cat,
@@ -616,74 +627,66 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
                 });
             });
 
+
             const BOM = "\uFEFF";
             const csvBody = [headers, ...rows]
                 .map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
                 .join('\n');
             const csvContent = BOM + csvBody;
 
-            const filename = `炊飯向上(週會)品評_${new Date().toISOString().slice(0,10)}.csv`;
+            const filename = `炊飯週會品評_${new Date().toISOString().slice(0,10)}.csv`;
             uploadCSVToDrive({ csvContent, filename, assessor });
         }
 
 
-async function uploadCSVToDrive({ csvContent, filename, assessor }) {
+        async function uploadCSVToDrive({ csvContent, filename, assessor }) {
             if (!DRIVE_WEBAPP_URL) {
                 alert('尚未設定 DRIVE_WEBAPP_URL，因此無法上傳到雲端硬碟。');
                 return;
             }
 
-            const payload = {
-                token: UPLOAD_TOKEN,
-                filename,
-                assessor,
-                csv: csvContent
-            };
-
-            const formBody = new URLSearchParams({ payload: JSON.stringify(payload) });
-
             try {
-                const res = await fetch(DRIVE_WEBAPP_URL, {
-                    method: 'POST',
-                    body: formBody
-                });
+                const base64 = csvToBase64(csvContent);
 
-                const raw = await res.text();
-                let out;
-                try { out = JSON.parse(raw); } catch { out = { ok: false, message: raw }; }
+                const iframeName = 'upload_iframe_' + Date.now();
+                const iframe = document.createElement('iframe');
+                iframe.name = iframeName;
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
 
-                if (!res.ok || !out.ok) {
-                    throw new Error(out.message || 'Upload failed');
-                }
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = DRIVE_WEBAPP_URL;
+                form.target = iframeName;
+                form.style.display = 'none';
 
-                alert('提交成功');
+                const addField = (name, value) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = name;
+                    input.value = value;
+                    form.appendChild(input);
+                };
+
+                addField('filename', filename);
+                addField('base64', base64);
+
+                document.body.appendChild(form);
+                form.submit();
+
+                setTimeout(() => {
+                    form.remove();
+                    iframe.remove();
+                }, 5000);
+
+                alert('表單已送出，請稍候至 Google 雲端資料夾確認檔案是否上傳成功。');
                 clearAllAfterSubmit();
             } catch (err) {
                 console.error(err);
-
-                const reason = String(err?.message || err || '');
-                const isLocalFile = location.protocol === 'file:';
-                if (isLocalFile) {
-                    try {
-                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                        alert('目前是以本機 file:// 開啟，無法直接呼叫雲端上傳，已改為下載 CSV 到電腦。若要直接上傳雲端，請改用網站方式開啟此表單。');
-                        return;
-                    } catch (downloadErr) {
-                        console.error(downloadErr);
-                    }
-                }
-
-                alert('上傳失敗：' + reason);
+                alert('上傳失敗：' + (err?.message || err));
             }
         }
+
 
         function runTests() {
             const log = (msg) => {
