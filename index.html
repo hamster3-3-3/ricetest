@@ -54,7 +54,7 @@
                 >
                 <p id="assessorError" class="mt-2 text-xs text-red-500 hidden">請先填寫評測者姓名（必填）。</p>
             </div>
-            <p class="text-gray-400 text-sm hidden md:block">切換版本1／版本2時系統會自動保留您的評分與勾選項目。</p>
+            <p class="text-gray-400 text-sm hidden md:block">切換 A／B／C 時系統會自動保留您的評分與勾選項目。</p>
         </div>
 
         <!-- 品項切換區 -->
@@ -73,8 +73,9 @@
                         <label class="text-xs font-bold text-gray-400 uppercase block mb-1">樣品編號</label>
                         <div class="relative">
                             <select class="w-full bg-gray-100 border-2 border-transparent focus:border-gray-900 rounded-xl p-3 font-mono font-bold text-gray-900 outline-none cursor-pointer" disabled>
-                                <option selected>版本1</option>
-                                <option>版本2</option>
+                                <option selected>A</option>
+                                <option>B</option>
+                                <option>C</option>
                             </select>
                             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">▼</div>
                         </div>
@@ -98,8 +99,9 @@
         const UPLOAD_TOKEN = "rice_test_2025";
 
         const sampleOptions = {
-            "版本1": "版本1",
-            "版本2": "版本2"
+            "A": "A",
+            "B": "B",
+            "C": "C"
         };
 
         const categories = [
@@ -108,12 +110,12 @@
         ];
 
         const categorySamples = {
-            "鮪魚飯糰": ["版本1", "版本2"],
-            "熟成紅鮭飯糰": ["版本1", "版本2"]
+            "鮪魚飯糰": ["A", "B", "C"],
+            "熟成紅鮭飯糰": ["A", "B", "C"]
         };
 
         function getSampleCodes(catName) {
-            return categorySamples[catName] || ["版本1", "版本2"];
+            return categorySamples[catName] || ["A", "B", "C"];
         }
 
         const criteria = [
