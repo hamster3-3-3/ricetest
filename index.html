@@ -374,12 +374,6 @@
                         )).join('')}
                     </div>
                     <div class="mt-4">
-                        <label class="block text-sm font-bold text-gray-700 mb-2">感受到的項目</label>
-                        <div class="flex flex-wrap gap-2">
-                            ${renderCheckOptions(item.key, currentData.evaluation?.[item.key] || [])}
-                        </div>
-                    </div>
-                    <div class="mt-4">
                         <label class="block text-sm font-bold text-gray-700 mb-2">說明</label>
                         <input
                             type="text"
@@ -580,12 +574,12 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
 
             const headers = [
                 '品項', '評測者', '樣品代號',
-                '顏色(外觀)得分', '顏色(外觀)感受到項目', '顏色(外觀)說明',
-                '香氣(飯香)得分', '香氣(飯香)感受到項目', '香氣(飯香)說明',
-                '粒感得分', '粒感感受到項目', '粒感說明',
-                '軟硬度得分', '軟硬度感受到項目', '軟硬度說明',
-                '味道得分', '味道感受到項目', '味道說明',
-                '黏度得分', '黏度感受到項目', '黏度說明',
+                '顏色(外觀)得分', '顏色(外觀)說明',
+                '香氣(飯香)得分', '香氣(飯香)說明',
+                '粒感得分', '粒感說明',
+                '軟硬度得分', '軟硬度說明',
+                '味道得分', '味道說明',
+                '黏度得分', '黏度說明',
                 '綜合評價'
             ];
 
@@ -599,27 +593,21 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
                         ver,
 
                         getOptionLabelWithScore('color', d.valIdx?.color, d.scores?.color),
-                        getSelectedCheckText('color', d.evaluation?.color),
                         d.notes?.color || '',
 
                         getOptionLabelWithScore('aroma', d.valIdx?.aroma, d.scores?.aroma),
-                        getSelectedCheckText('aroma', d.evaluation?.aroma),
                         d.notes?.aroma || '',
 
                         getOptionLabelWithScore('grain', d.valIdx?.grain, d.scores?.grain),
-                        getSelectedCheckText('grain', d.evaluation?.grain),
                         d.notes?.grain || '',
 
                         getOptionLabelWithScore('firmness', d.valIdx?.firmness, d.scores?.firmness),
-                        getSelectedCheckText('firmness', d.evaluation?.firmness),
                         d.notes?.firmness || '',
 
                         getOptionLabelWithScore('taste', d.valIdx?.taste, d.scores?.taste),
-                        getSelectedCheckText('taste', d.evaluation?.taste),
                         d.notes?.taste || '',
 
                         getOptionLabelWithScore('viscosity', d.valIdx?.viscosity, d.scores?.viscosity),
-                        getSelectedCheckText('viscosity', d.evaluation?.viscosity),
                         d.notes?.viscosity || '',
 
                         getOverallEvaluationLabel(d.overallEvaluation)
