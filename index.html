@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>標準飯評測</title>
+    <title>6/11炊飯週會評測</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
@@ -26,7 +26,7 @@
         <!-- Header -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b-2 border-gray-800 pb-6">
             <div class="text-center md:text-left">
-                <h1 class="text-3xl font-black text-gray-900 tracking-tight">標準飯評測</h1>
+                <h1 class="text-3xl font-black text-gray-900 tracking-tight">6/11炊飯週會評測</h1>
             </div>
             <div class="mt-4 md:mt-0 flex flex-wrap justify-center gap-3">
                 <button onclick="exportCSV()" class="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-800 transition shadow-lg flex items-center gap-2">
@@ -73,9 +73,10 @@
                         <label class="text-xs font-bold text-gray-400 uppercase block mb-1">樣品編號</label>
                         <div class="relative">
                             <select class="w-full bg-gray-100 border-2 border-transparent focus:border-gray-900 rounded-xl p-3 font-mono font-bold text-gray-900 outline-none cursor-pointer" disabled>
-                                <option selected>A</option>
-                                <option>B</option>
-                                <option>C</option>
+                                <option selected>晉欣</option>
+                                <option>大溪</option>
+                                <option>大溪A</option>
+                                <option>大溪B</option>
                             </select>
                             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">▼</div>
                         </div>
@@ -99,9 +100,10 @@
         const UPLOAD_TOKEN = "rice_test_2025";
 
         const sampleOptions = {
-            "A": "A",
-            "B": "B",
-            "C": "C"
+            "晉欣": "晉欣",
+            "大溪": "大溪",
+            "大溪A": "大溪A",
+            "大溪B": "大溪B"
         };
 
         const categories = [
@@ -110,12 +112,12 @@
         ];
 
         const categorySamples = {
-            "鮪魚飯糰": ["A", "B", "C"],
-            "熟成紅鮭飯糰": ["A", "B", "C"]
+            "鮪魚飯糰": ["晉欣", "大溪", "大溪A", "大溪B"],
+            "熟成紅鮭飯糰": ["晉欣", "大溪"]
         };
 
         function getSampleCodes(catName) {
-            return categorySamples[catName] || ["A", "B", "C"];
+            return categorySamples[catName] || ["晉欣", "大溪"];
         }
 
         const criteria = [
@@ -374,6 +376,12 @@
                         )).join('')}
                     </div>
                     <div class="mt-4">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">感受到的項目</label>
+                        <div class="flex flex-wrap gap-2">
+                            ${renderCheckOptions(item.key, currentData.evaluation?.[item.key] || [])}
+                        </div>
+                    </div>
+                    <div class="mt-4">
                         <label class="block text-sm font-bold text-gray-700 mb-2">說明</label>
                         <input
                             type="text"
@@ -574,12 +582,12 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
 
             const headers = [
                 '品項', '評測者', '樣品代號',
-                '顏色(外觀)得分', '顏色(外觀)說明',
-                '香氣(飯香)得分', '香氣(飯香)說明',
-                '粒感得分', '粒感說明',
-                '軟硬度得分', '軟硬度說明',
-                '味道得分', '味道說明',
-                '黏度得分', '黏度說明',
+                '顏色(外觀)得分', '顏色(外觀)感受到項目', '顏色(外觀)說明',
+                '香氣(飯香)得分', '香氣(飯香)感受到項目', '香氣(飯香)說明',
+                '粒感得分', '粒感感受到項目', '粒感說明',
+                '軟硬度得分', '軟硬度感受到項目', '軟硬度說明',
+                '味道得分', '味道感受到項目', '味道說明',
+                '黏度得分', '黏度感受到項目', '黏度說明',
                 '綜合評價'
             ];
 
@@ -593,21 +601,27 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
                         ver,
 
                         getOptionLabelWithScore('color', d.valIdx?.color, d.scores?.color),
+                        getSelectedCheckText('color', d.evaluation?.color),
                         d.notes?.color || '',
 
                         getOptionLabelWithScore('aroma', d.valIdx?.aroma, d.scores?.aroma),
+                        getSelectedCheckText('aroma', d.evaluation?.aroma),
                         d.notes?.aroma || '',
 
                         getOptionLabelWithScore('grain', d.valIdx?.grain, d.scores?.grain),
+                        getSelectedCheckText('grain', d.evaluation?.grain),
                         d.notes?.grain || '',
 
                         getOptionLabelWithScore('firmness', d.valIdx?.firmness, d.scores?.firmness),
+                        getSelectedCheckText('firmness', d.evaluation?.firmness),
                         d.notes?.firmness || '',
 
                         getOptionLabelWithScore('taste', d.valIdx?.taste, d.scores?.taste),
+                        getSelectedCheckText('taste', d.evaluation?.taste),
                         d.notes?.taste || '',
 
                         getOptionLabelWithScore('viscosity', d.valIdx?.viscosity, d.scores?.viscosity),
+                        getSelectedCheckText('viscosity', d.evaluation?.viscosity),
                         d.notes?.viscosity || '',
 
                         getOverallEvaluationLabel(d.overallEvaluation)
@@ -622,7 +636,7 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
                 .join('\n');
             const csvContent = BOM + csvBody;
 
-            const filename = `標準飯評測_${new Date().toISOString().slice(0,10)}.csv`;
+            const filename = `6-11炊飯週會評測_${new Date().toISOString().slice(0,10)}.csv`;
             uploadCSVToDrive({ csvContent, filename, assessor });
         }
 
