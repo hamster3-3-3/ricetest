@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>6/18炊飯週會評測</title>
+    <title>6/23炊飯向上品評</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
@@ -26,7 +26,7 @@
         <!-- Header -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b-2 border-gray-800 pb-6">
             <div class="text-center md:text-left">
-                <h1 class="text-3xl font-black text-gray-900 tracking-tight">6/18炊飯週會評測</h1>
+                <h1 class="text-3xl font-black text-gray-900 tracking-tight">6/23炊飯向上品評</h1>
             </div>
             <div class="mt-4 md:mt-0 flex flex-wrap justify-center gap-3">
                 <button onclick="exportCSV()" class="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-800 transition shadow-lg flex items-center gap-2">
@@ -75,8 +75,6 @@
                             <select class="w-full bg-gray-100 border-2 border-transparent focus:border-gray-900 rounded-xl p-3 font-mono font-bold text-gray-900 outline-none cursor-pointer" disabled>
                                 <option selected>晉欣</option>
                                 <option>大溪</option>
-                                <option>大溪A</option>
-                                <option>大溪B</option>
                             </select>
                             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">▼</div>
                         </div>
@@ -101,9 +99,7 @@
 
         const sampleOptions = {
             "晉欣": "晉欣",
-            "大溪": "大溪",
-            "大溪A": "大溪A",
-            "大溪B": "大溪B"
+            "大溪": "大溪"
         };
 
         const categories = [
@@ -113,7 +109,7 @@
         ];
 
         const categorySamples = {
-            "鮪魚飯糰": ["晉欣", "大溪", "大溪A", "大溪B"],
+            "鮪魚飯糰": ["晉欣", "大溪"],
             "熟成紅鮭飯糰": ["晉欣", "大溪"],
             "肉鬆飯糰": ["晉欣"]
         };
@@ -638,7 +634,7 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
                 .join('\n');
             const csvContent = BOM + csvBody;
 
-            const filename = `6-18炊飯週會評測_${new Date().toISOString().slice(0,10)}.csv`;
+            const filename = `6-23炊飯向上品評_${new Date().toISOString().slice(0,10)}.csv`;
             uploadCSVToDrive({ csvContent, filename, assessor });
         }
 
