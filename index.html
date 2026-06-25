@@ -54,7 +54,7 @@
                 >
                 <p id="assessorError" class="mt-2 text-xs text-red-500 hidden">請先填寫評測者姓名（必填）。</p>
             </div>
-            <p class="text-gray-400 text-sm hidden md:block">切換 A／B／C 時系統會自動保留您的評分與勾選項目。</p>
+            <p class="text-gray-400 text-sm hidden md:block">切換樣品編號時系統會自動保留評分；六項評分與綜合評價皆為必填。</p>
         </div>
 
         <!-- 品項切換區 -->
@@ -554,6 +554,49 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
         }
 
 
+        function validateRequiredItemsOrBlock() {
+            const missingItems = [];
+            let firstMissing = null;
+
+            categories.forEach(cat => {
+                getSampleCodes(cat).forEach(ver => {
+                    const d = dataStore?.[cat]?.[ver] || {};
+
+                    criteria.forEach(item => {
+                        const value = d.valIdx?.[item.key];
+                        if (value === null || value === undefined || value === '') {
+                            const label = `${cat}／${ver}：${item.titleZh.replace(/^[一二三四五六七八九十]+、/, '')}`;
+                            missingItems.push(label);
+                            if (!firstMissing) firstMissing = { cat, ver };
+                        }
+                    });
+
+                    if (!d.overallEvaluation) {
+                        missingItems.push(`${cat}／${ver}：綜合評價`);
+                        if (!firstMissing) firstMissing = { cat, ver };
+                    }
+                });
+            });
+
+            if (missingItems.length > 0) {
+                if (firstMissing) {
+                    currentCategoryIdx = categories.indexOf(firstMissing.cat);
+                    dataStore[firstMissing.cat].currentSelection = firstMissing.ver;
+                    renderTabs();
+                    renderCurrentForm();
+                    document.getElementById('formContainer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
+                const preview = missingItems.slice(0, 15).map(item => `・${item}`).join('\n');
+                const moreText = missingItems.length > 15 ? `\n...另有 ${missingItems.length - 15} 個項目未填寫` : '';
+                alert(`有項目沒有填寫，請完成所有必填項目後再提交：\n\n${preview}${moreText}`);
+                return false;
+            }
+
+            return true;
+        }
+
+
 
         function csvToBase64(str) {
             return btoa(unescape(encodeURIComponent(str)));
@@ -581,6 +624,7 @@ function renderScoreCard(catName, category, val, score, text, isActive) {
         function exportCSV() {
             const assessor = validateAssessorOrBlock();
             if (!assessor) return;
+            if (!validateRequiredItemsOrBlock()) return;
 
             const headers = [
                 '品項', '評測者', '樣品代號',
